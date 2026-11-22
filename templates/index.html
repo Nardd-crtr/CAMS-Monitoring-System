@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CAMS{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div id="stats-section">
+    <h2 style="margin-bottom: 1rem;">System Overview</h2>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3 id="stat-total">0</h3>
+            <p>Total Computers</p>
+        </div>
+        <div class="stat-card" style="border-color: var(--success);">
+            <h3 id="stat-available" style="color: var(--success);">0</h3>
+            <p>Available</p>
+        </div>
+        <div class="stat-card" style="border-color: var(--danger);">
+            <h3 id="stat-unavailable" style="color: var(--danger);">0</h3>
+            <p>Not Available</p>
+        </div>
+        <div class="stat-card" style="border-color: var(--warning);">
+            <h3 id="stat-maintenance" style="color: var(--warning);">0</h3>
+            <p>Maintenance</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="stat-percentage">0%</h3>
+            <p>Availability Rate</p>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Computers</h2>
+        <div>
+            <button class="btn" onclick="showAddComputerModal()">+ Add Computer</button>
+            <button class="btn" onclick="showSettingsModal()">⚙️ Settings</button>
+            <button class="btn" onclick="exportCSV()">📊 Export CSV</button>
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 1rem;">
+        <input 
+            type="text" 
+            id="search-computers" 
+            placeholder="Search computers..." 
+            style="width: 100%; max-width: 400px;"
+            oninput="filterComputers()"
+        >
+    </div>
+    
+    <div style="overflow-x: auto;">
+        <table id="computers-table">
+            <thead>
+                <tr>
+                    <th>Computer Name</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                    <th>Last Seen</th>
+                    <th>Response Time</th>
+                    <th>Monitoring</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="computers-tbody">
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-secondary);">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 1rem;">Availability Chart</h2>
+    <canvas id="availability-chart" style="max-height: 300px;"></canvas>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2>Notifications</h2>
+        <button class="btn" onclick="markNotificationsRead()">Mark All Read</button>
+    </div>
+    <div id="notifications-list" style="max-height: 300px; overflow-y: auto;">
+        <p style="text-align: center; color: var(--text-secondary);">No notifications</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 1rem;">Recent History</h2>
+    <div style="margin-bottom: 1rem;">
+        <input 
+            type="text" 
+            id="search-history" 
+            placeholder="Search history..." 
+            style="width: 100%; max-width: 400px;"
+            oninput="filterHistory()"
+        >
+    </div>
+    <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>Computer</th>
+                    <th>Event</th>
+                    <th>Previous Status</th>
+                    <th>Current Status</th>
+                    <th>Timestamp</th>
+                    <th>Response Time</th>
+                </tr>
+            </thead>
+            <tbody id="history-tbody">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary);">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Computer Modal -->
+<div id="add-computer-modal" class="modal" style="display: none;">
+    <div class="modal-content card" style="max-width: 500px; margin: 2rem auto;">
+        <h2 style="margin-bottom: 1rem;">Add Computer</h2>
+        <form id="add-computer-form" onsubmit="addComputer(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Computer Name</label>
+                <input type="text" name="computer_name" required style="width: 100%;" pattern="[A-Za-z0-9_-]{2,40}">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">IP Address</label>
+                <input type="text" name="ip_address" required style="width: 100%;" pattern="[A-Fa-f0-9:.]{3,45}">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn" style="flex: 1;">Add</button>
+                <button type="button" class="btn btn-danger" onclick="hideAddComputerModal()" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+        <div id="add-computer-result" style="margin-top: 1rem;"></div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal" style="display: none;">
+    <div class="modal-content card" style="max-width: 500px; margin: 2rem auto;">
+        <h2 style="margin-bottom: 1rem;">Settings</h2>
+        <form id="settings-form" onsubmit="saveSettings(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">System Name</label>
+                <input type="text" name="system_name" id="setting-system-name" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Monitor Interval (seconds)</label>
+                <input type="number" name="monitor_interval" id="setting-monitor-interval" min="2" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Offline Threshold (missed heartbeats)</label>
+                <input type="number" name="offline_threshold" id="setting-offline-threshold" min="1" style="width: 100%;">
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" name="automatic_monitoring" id="setting-automatic-monitoring">
+                    <span style="color: var(--text-secondary);">Enable Automatic Monitoring</span>
+                </label>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn" style="flex: 1;">Save</button>
+                <button type="button" class="btn btn-danger" onclick="hideSettingsModal()" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-content {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.notification-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.notification-item.unread {
+    background-color: rgba(0, 255, 136, 0.05);
+    border-left: 3px solid var(--accent);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let stateData = null;
+let availabilityChart = null;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    loadState();
+    setInterval(loadState, 2000); // Poll every 2 seconds
+});
+
+async function loadState() {
+    try {
+        const response = await fetch('/api/state');
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error('Failed to load state');
+        }
+        stateData = await response.json();
+        updateDashboard();
+    } catch (error) {
+        console.error('Error loading state:', error);
+    }
+}
+
+function updateDashboard() {
+    updateStats();
+    updateComputersTable();
+    updateNotifications();
+    updateHistory();
+    updateChart();
+}
+
+function updateStats() {
+    if (!stateData) return;
+    const stats = stateData.stats;
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-available').textContent = stats.available;
+    document.getElementById('stat-unavailable').textContent = stats.unavailable;
+    document.getElementById('stat-maintenance').textContent = stats.maintenance;
+    document.getElementById('stat-percentage').textContent = stats.percentage + '%';
+}
+
+function updateComputersTable() {
+    if (!stateData) return;
+    const tbody = document.getElementById('computers-tbody');
+    if (stateData.computers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No computers registered</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = stateData.computers.map(computer => `
+        <tr data-search="${computer.computer_name.toLowerCase()} ${computer.ip_address}">
+            <td><strong>${escapeHtml(computer.computer_name)}</strong></td>
+            <td>${escapeHtml(computer.ip_address)}</td>
+            <td><span class="status-badge status-${computer.status.toLowerCase().replace(' ', '-')}">${computer.status}</span></td>
+            <td style="color: var(--text-secondary); font-size: 0.875rem;">${formatTimestamp(computer.last_seen)}</td>
+            <td>${computer.response_time ? computer.response_time + ' ms' : 'N/A'}</td>
+            <td>
+                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" ${computer.monitoring_enabled ? 'checked' : ''} 
+                           onchange="toggleMonitoring(${computer.id}, this.checked)">
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Enabled</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+                    <input type="checkbox" ${computer.maintenance_mode ? 'checked' : ''} 
+                           onchange="toggleMaintenance(${computer.id}, this.checked)">
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Maintenance</span>
+                </label>
+            </td>
+            <td>
+                <button class="btn" style="font-size: 0.875rem; padding: 0.25rem 0.5rem;" 
+                        onclick="editComputer(${computer.id})">Edit</button>
+                <button class="btn btn-danger" style="font-size: 0.875rem; padding: 0.25rem 0.5rem;" 
+                        onclick="deleteComputer(${computer.id}, '${escapeHtml(computer.computer_name)}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function updateNotifications() {
+    if (!stateData) return;
+    const list = document.getElementById('notifications-list');
+    if (stateData.notifications.length === 0) {
+        list.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">No notifications</p>';
+        return;
+    }
+    
+    list.innerHTML = stateData.notifications.map(notif => `
+        <div class="notification-item ${notif.is_read ? '' : 'unread'}">
+            <div>
+                <strong>${notif.computer_name || 'System'}</strong>
+                <p style="color: var(--text-secondary); margin: 0.25rem 0 0 0; font-size: 0.875rem;">${escapeHtml(notif.message)}</p>
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">${formatTimestamp(notif.timestamp)}</small>
+            </div>
+            <span class="status-badge status-${notif.notification_type}">${notif.notification_type}</span>
+        </div>
+    `).join('');
+}
+
+function updateHistory() {
+    if (!stateData) return;
+    const tbody = document.getElementById('history-tbody');
+    if (stateData.history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No history</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = stateData.history.map(h => `
+        <tr data-search="${h.computer_name.toLowerCase()} ${h.event}">
+            <td>${escapeHtml(h.computer_name)}</td>
+            <td><span class="status-badge">${h.event}</span></td>
+            <td><span class="status-badge status-${(h.previous_status || 'unknown').toLowerCase().replace(' ', '-')}">${h.previous_status || 'N/A'}</span></td>
+            <td><span class="status-badge status-${h.current_status.toLowerCase().replace(' ', '-')}">${h.current_status}</span></td>
+            <td style="color: var(--text-secondary); font-size: 0.875rem;">${formatTimestamp(h.timestamp)}</td>
+            <td>${h.response_time ? h.response_time + ' ms' : 'N/A'}</td>
+        </tr>
+    `).join('');
+}
+
+function updateChart() {
+    if (!stateData) return;
+    
+    const ctx = document.getElementById('availability-chart');
+    if (!ctx) return;
+    
+    // Group history by time periods
+    const now = new Date();
+    const labels = [];
+    const availableData = [];
+    const unavailableData = [];
+    
+    for (let i = 11; i >= 0; i--) {
+        const time = new Date(now - i * 300000); // 5 minute intervals
+        labels.push(time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+        
+        const available = stateData.history.filter(h => {
+            const hTime = new Date(h.timestamp);
+            return hTime >= time && hTime < new Date(time.getTime() + 300000) && h.current_status === 'AVAILABLE';
+        }).length;
+        
+        const unavailable = stateData.history.filter(h => {
+            const hTime = new Date(h.timestamp);
+            return hTime >= time && hTime < new Date(time.getTime() + 300000) && h.current_status === 'NOT AVAILABLE';
+        }).length;
+        
+        availableData.push(available);
+        unavailableData.push(unavailable);
+    }
+    
+    if (availabilityChart) {
+        availabilityChart.data.labels = labels;
+        availabilityChart.data.datasets[0].data = availableData;
+        availabilityChart.data.datasets[1].data = unavailableData;
+        availabilityChart.update('none');
+    } else {
+        availabilityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Available',
+                    data: availableData,
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Not Available',
+                    data: unavailableData,
+                    borderColor: '#ff4444',
+                    backgroundColor: 'rgba(255, 68, 68, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#8b949e' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#8b949e', stepSize: 1 },
+                        grid: { color: '#30363d' }
+                    },
+                    x: {
+                        ticks: { color: '#8b949e' },
+                        grid: { color: '#30363d' }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function filterComputers() {
+    const search = document.getElementById('search-computers').value.toLowerCase();
+    const rows = document.querySelectorAll('#computers-tbody tr[data-search]');
+    rows.forEach(row => {
+        row.style.display = row.dataset.search.includes(search) ? '' : 'none';
+    });
+}
+
+function filterHistory() {
+    const search = document.getElementById('search-history').value.toLowerCase();
+    const rows = document.querySelectorAll('#history-tbody tr[data-search]');
+    rows.forEach(row => {
+        row.style.display = row.dataset.search.includes(search) ? '' : 'none';
+    });
+}
+
+async function toggleMonitoring(id, enabled) {
+    try {
+        const response = await fetch(`/api/computers/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ monitoring_enabled: enabled })
+        });
+        if (!response.ok) throw new Error('Failed to update');
+        loadState();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to update monitoring status');
+    }
+}
+
+async function toggleMaintenance(id, maintenance) {
+    try {
+        const response = await fetch(`/api/computers/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ maintenance_mode: maintenance })
+        });
+        if (!response.ok) throw new Error('Failed to update');
+        loadState();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to update maintenance mode');
+    }
+}
+
+function showAddComputerModal() {
+    document.getElementById('add-computer-modal').style.display = 'block';
+    document.getElementById('add-computer-result').innerHTML = '';
+}
+
+function hideAddComputerModal() {
+    document.getElementById('add-computer-modal').style.display = 'none';
+    document.getElementById('add-computer-form').reset();
+}
+
+async function addComputer(event) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+        computer_name: form.computer_name.value,
+        ip_address: form.ip_address.value
+    };
+    
+    try {
+        const response = await fetch('/api/computers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('add-computer-result').innerHTML = `
+                <div class="alert alert-success">
+                    <strong>Computer added successfully!</strong><br>
+                    Agent Token: <code style="background: var(--bg-tertiary); padding: 0.25rem 0.5rem; border-radius: 4px; display: block; margin-top: 0.5rem; word-break: break-all;">${result.agent_token}</code>
+                    <small style="display: block; margin-top: 0.5rem;">Save this token securely. It will not be shown again.</small>
+                </div>
+            `;
+            form.reset();
+            loadState();
+        } else {
+            document.getElementById('add-computer-result').innerHTML = `
+                <div class="alert alert-error">${result.error || 'Failed to add computer'}</div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('add-computer-result').innerHTML = `
+            <div class="alert alert-error">Failed to add computer</div>
+        `;
+    }
+}
+
+async function deleteComputer(id, name) {
+    if (!confirm(`Delete computer "${name}"? This action cannot be undone.`)) return;
+    
+    try {
+        const response = await fetch(`/api/computers/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete');
+        loadState();
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete computer');
+    }
+}
+
+function editComputer(id) {
+    alert('Edit functionality coming soon!');
+}
+
+function showSettingsModal() {
+    if (!stateData) return;
+    document.getElementById('settings-modal').style.display = 'block';
+    
+    const settings = stateData.settings;
+    document.getElementById('setting-system-name').value = settings.system_name || 'CAMS';
+    document.getElementById('setting-monitor-interval').value = settings.monitor_interval || '5';
+    document.getElementById('setting-offline-threshold').value = settings.offline_threshold || '3';
+    document.getElementById('setting-automatic-monitoring').checked = (settings.automatic_monitoring || 'true') === 'true';
+}
+
+function hideSettingsModal() {
+    document.getElementById('settings-modal').style.display = 'none';
+}
+
+async function saveSettings(event) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+        system_name: form.system_name.value,
+        monitor_interval: form.monitor_interval.value,
+        offline_threshold: form.offline_threshold.value,
+        automatic_monitoring: form.automatic_monitoring.checked.toString()
+    };
+    
+    try {
+        const response = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to save');
+        hideSettingsModal();
+        loadState();
+        alert('Settings saved successfully');
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to save settings');
+    }
+}
+
+async function markNotificationsRead() {
+    try {
+        const response = await fetch('/api/notifications/read', { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to mark read');
+        loadState();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function exportCSV() {
+    window.location.href = '/api/export.csv';
+}
+
+function formatTimestamp(timestamp) {
+    if (!timestamp) return 'Never';
+    try {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now - date;
+        
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + ' hr ago';
+        
+        return date.toLocaleString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+    } catch {
+        return timestamp;
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}
