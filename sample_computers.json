@@ -1,0 +1,56 @@
+{
+  "server_url": "http://192.168.1.10:5000",
+  "interval_seconds": 5,
+  "clients": [
+    {
+      "computer_name": "PC-01",
+      "ip_address": "192.168.1.101",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-02",
+      "ip_address": "192.168.1.102",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-03",
+      "ip_address": "192.168.1.103",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-04",
+      "ip_address": "192.168.1.104",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-05",
+      "ip_address": "192.168.1.105",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-06",
+      "ip_address": "192.168.1.106",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-07",
+      "ip_address": "192.168.1.107",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-08",
+      "ip_address": "192.168.1.108",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-09",
+      "ip_address": "192.168.1.109",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    },
+    {
+      "computer_name": "PC-10",
+      "ip_address": "192.168.1.110",
+      "token": "PASTE_UNIQUE_TOKEN_FROM_INIT_DB"
+    }
+  ]
+}
